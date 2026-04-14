@@ -1,0 +1,821 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes">
+    <title>AI Detector | Analisis Teks</title>
+    <style>
+        html, body {
+            margin: 0;
+            padding: 0;
+            background: var(--color-background-tertiary);
+        }
+        /* Chrome, Edge, Safari */
+        ::-webkit-scrollbar {
+            display: none;
+        }
+
+        /* Firefox */
+        html {
+            scrollbar-width: none;
+        }
+        /* ----- GLOBAL CSS (preserved exactly as provided, only minor safe adjustments) ----- */
+        :root {
+            --purple: #7F77DD;
+            --purple-light: #EEEDFE;
+            --purple-dark: #3C3489;
+            --teal: #1D9E75;
+            --teal-light: #E1F5EE;
+            --coral: #D85A30;
+            --coral-light: #FAECE7;
+            /* Additional theme variables (kept as fallback) */
+            --color-background-tertiary: #0f1115;
+            --color-background-primary: #1a1d24;
+            --color-background-secondary: #232733;
+
+            --color-border-tertiary: #2f3441;
+            --color-border-primary: #3a4050;
+
+            --color-text-primary: #e6e9ef;
+            --color-text-secondary: #a0a6b5;
+            --color-text-tertiary: #6b7280;
+            --color-text-danger: #D85A30;
+            --border-radius-lg: 1rem;
+            --border-radius-md: 0.75rem;
+            --font-sans: 'Inter', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, sans-serif;
+        }
+
+        .ada-root {
+            font-family: var(--font-sans, system-ui, sans-serif);
+            background: var(--color-background-tertiary);
+            min-height: 100vh;
+            padding: 2rem 1rem;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        .ada-layout {
+            display: grid;
+            grid-template-columns: 280px 1fr;
+            gap: 1.5rem;
+            width: 100%;
+            max-width: 900px;
+        }
+
+        @media (max-width: 640px) {
+            .ada-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .ada-panel {
+            background: var(--color-background-primary);
+            border: 0.5px solid var(--color-border-tertiary);
+            border-radius: var(--border-radius-lg);
+            padding: 1.25rem;
+        }
+
+        .ada-logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 1.5rem;
+        }
+
+        .ada-logo-icon {
+            width: 36px;
+            height: 36px;
+            border-radius: 10px;
+            background: var(--purple);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+        }
+
+        .ada-logo-icon svg {
+            width: 18px;
+            height: 18px;
+            fill: white;
+        }
+
+        .ada-logo-text {
+            font-size: 15px;
+            font-weight: 500;
+            color: var(--color-text-primary);
+            line-height: 1.2;
+        }
+
+        .ada-logo-sub {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            font-weight: 400;
+        }
+
+        .ada-divider {
+            height: 0.5px;
+            background: var(--color-border-tertiary);
+            margin: 1rem 0;
+        }
+
+        .ada-stat-label {
+            font-size: 11px;
+            color: var(--color-text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 4px;
+        }
+
+        .ada-stat-value {
+            font-size: 22px;
+            font-weight: 500;
+            color: var(--color-text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .ada-stat-unit {
+            font-size: 13px;
+            font-weight: 400;
+            color: var(--color-text-secondary);
+            margin-left: 2px;
+        }
+
+        .ada-stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 1rem;
+        }
+
+        .ada-mini-stat {
+            background: var(--color-background-secondary);
+            border-radius: var(--border-radius-md);
+            padding: 10px 12px;
+        }
+
+        .ada-gauge-wrap {
+            margin: 1rem 0;
+            text-align: center;
+        }
+
+        .ada-gauge-svg {
+            overflow: visible;
+        }
+
+        .ada-verdict-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 12px;
+            font-weight: 500;
+            margin-top: 8px;
+        }
+
+        .ada-badge-ai {
+            background: var(--coral-light);
+            color: var(--coral);
+        }
+
+        .ada-badge-human {
+            background: var(--teal-light);
+            color: var(--teal);
+        }
+
+        .ada-badge-neutral {
+            background: var(--color-background-secondary);
+            color: var(--color-text-secondary);
+        }
+
+        .ada-dot {
+            width: 7px;
+            height: 7px;
+            border-radius: 50%;
+            display: inline-block;
+            flex-shrink: 0;
+        }
+
+        .ada-main-panel {
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .ada-textarea-wrap {
+            background: var(--color-background-primary);
+            border: 0.5px solid var(--color-border-tertiary);
+            border-radius: var(--border-radius-lg);
+            padding: 1.25rem;
+            position: relative;
+        }
+
+        .ada-textarea-label {
+            font-size: 12px;
+            color: var(--color-text-secondary);
+            margin-bottom: 8px;
+            font-weight: 500;
+        }
+
+        .ada-textarea {
+            width: 100%;
+            min-height: 160px;
+            background: var(--color-background-secondary);
+            border: 0.5px solid var(--color-border-tertiary);
+            border-radius: var(--border-radius-md);
+            padding: 12px;
+            font-size: 14px;
+            font-family: inherit;
+            color: var(--color-text-primary);
+            resize: vertical;
+            line-height: 1.6;
+            box-sizing: border-box;
+        }
+
+        .ada-textarea:focus {
+            outline: none;
+            border-color: var(--color-border-primary);
+        }
+
+        .ada-footer-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-top: 10px;
+        }
+
+        .ada-char {
+            font-size: 12px;
+            color: var(--color-text-tertiary);
+        }
+
+        .ada-btn {
+            background: var(--purple);
+            color: white;
+            border: none;
+            border-radius: 20px;
+            padding: 9px 22px;
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: opacity 0.15s, transform 0.1s;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            font-family: inherit;
+        }
+
+        .ada-btn:hover {
+            opacity: 0.88;
+        }
+
+        .ada-btn:active {
+            transform: scale(0.97);
+        }
+
+        .ada-btn:disabled {
+            opacity: 0.45;
+            cursor: not-allowed;
+        }
+
+        .ada-result-panel {
+            background: var(--color-background-primary);
+            border: 0.5px solid var(--color-border-tertiary);
+            border-radius: var(--border-radius-lg);
+            padding: 1.25rem;
+            display: none;
+        }
+
+        .ada-result-panel.visible {
+            display: block;
+        }
+
+        .ada-result-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 1rem;
+        }
+
+        .ada-result-title {
+            font-size: 14px;
+            font-weight: 500;
+            color: var(--color-text-primary);
+        }
+
+        .ada-bars {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-bottom: 1rem;
+        }
+
+        .ada-bar-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 13px;
+        }
+
+        .ada-bar-label {
+            min-width: 56px;
+            color: var(--color-text-secondary);
+            font-size: 12px;
+        }
+
+        .ada-bar-track {
+            flex: 1;
+            height: 6px;
+            background: var(--color-background-secondary);
+            border-radius: 3px;
+            overflow: hidden;
+        }
+
+        .ada-bar-fill {
+            height: 100%;
+            border-radius: 3px;
+            width: 0%;
+            transition: width 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .ada-bar-pct {
+            min-width: 32px;
+            text-align: right;
+            font-size: 12px;
+            font-weight: 500;
+            color: var(--color-text-primary);
+            font-variant-numeric: tabular-nums;
+        }
+
+        .ada-reasons {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-top: 0.75rem;
+        }
+
+        .ada-reason-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 13px;
+            color: var(--color-text-secondary);
+            line-height: 1.5;
+            padding: 8px 10px;
+            background: var(--color-background-secondary);
+            border-radius: var(--border-radius-md);
+            opacity: 0;
+            transform: translateY(6px);
+            animation: fadeIn 0.3s forwards;
+        }
+
+        @keyframes fadeIn {
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .ada-reason-icon {
+            width: 16px;
+            height: 16px;
+            border-radius: 50%;
+            flex-shrink: 0;
+            margin-top: 1px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 9px;
+        }
+
+        .ada-spinner-wrap {
+            display: none;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            padding: 1.5rem;
+        }
+
+        .ada-spinner-wrap.visible {
+            display: flex;
+        }
+
+        .ada-spinner {
+            width: 20px;
+            height: 20px;
+            border: 2px solid var(--color-border-tertiary);
+            border-top-color: var(--purple);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .ada-scanning-text {
+            font-size: 13px;
+            color: var(--color-text-secondary);
+        }
+
+        /* small custom for error message inside result panel (non-intrusive) */
+        .ada-error-message {
+            background: var(--coral-light);
+            color: var(--coral);
+            padding: 10px;
+            border-radius: var(--border-radius-md);
+            font-size: 13px;
+            margin-top: 12px;
+        }
+    </style>
+</head>
+<body>
+<div class="ada-root">
+    <div class="ada-layout">
+
+        <aside class="ada-panel" id="sidebar">
+            <div class="ada-logo">
+                <div class="ada-logo-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-1 14H9V8h2v8zm4 0h-2V8h2v8z" />
+                    </svg>
+                </div>
+                <div>
+                    <div class="ada-logo-text">AI Detector by Malvaa</div>
+                    <div class="ada-logo-sub">Text analysis tool</div>
+                </div>
+            </div>
+
+            <div class="ada-divider"></div>
+
+            <div class="ada-gauge-wrap">
+                <svg class="ada-gauge-svg" width="160" height="100" viewBox="0 0 160 100">
+                    <defs>
+                        <linearGradient id="gaugeGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                            <stop offset="0%" stop-color="#1D9E75" />
+                            <stop offset="50%" stop-color="#EF9F27" />
+                            <stop offset="100%" stop-color="#D85A30" />
+                        </linearGradient>
+                    </defs>
+                    <path d="M20 90 A 60 60 0 0 1 140 90" fill="none" stroke="var(--color-border-tertiary)"
+                          stroke-width="10" stroke-linecap="round" />
+                    <path id="gaugeFill" d="M20 90 A 60 60 0 0 1 140 90" fill="none" stroke="url(#gaugeGrad)"
+                          stroke-width="10" stroke-linecap="round" stroke-dasharray="188.5" stroke-dashoffset="188.5"
+                          style="transition: stroke-dashoffset 1s cubic-bezier(0.4,0,0.2,1)" />
+                    <line id="gaugeNeedle" x1="80" y1="90" x2="80" y2="40" stroke="var(--color-text-primary)"
+                          stroke-width="2" stroke-linecap="round" transform-origin="80 90"
+                          style="transform: rotate(0deg); transition: transform 1s cubic-bezier(0.4,0,0.2,1)" />
+                    <circle cx="80" cy="90" r="4" fill="var(--color-text-primary)" />
+                    <text x="18" y="108" font-size="9" fill="var(--color-text-secondary)"
+                          text-anchor="middle">Human</text>
+                    <text x="142" y="108" font-size="9" fill="var(--color-text-secondary)" text-anchor="end">AI</text>
+                    <text id="gaugeLabel" x="80" y="78" font-size="18" font-weight="500"
+                          fill="var(--color-text-primary)" text-anchor="middle">—</text>
+                </svg>
+
+                <div id="verdictBadge" class="ada-verdict-badge ada-badge-neutral">
+                    <span class="ada-dot" style="background: var(--color-text-secondary);"></span>
+                    <span>Awaiting input</span>
+                </div>
+            </div>
+
+            <div class="ada-divider"></div>
+
+            <div class="ada-stats-grid">
+                <div class="ada-mini-stat">
+                    <div class="ada-stat-label">Words</div>
+                    <div class="ada-stat-value" id="wordCount">0</div>
+                </div>
+                <div class="ada-mini-stat">
+                    <div class="ada-stat-label">Chars</div>
+                    <div class="ada-stat-value" id="charCountSide">0</div>
+                </div>
+                <div class="ada-mini-stat">
+                    <div class="ada-stat-label">Sentences</div>
+                    <div class="ada-stat-value" id="sentCount">0</div>
+                </div>
+                <div class="ada-mini-stat">
+                    <div class="ada-stat-label">Avg words</div>
+                    <div class="ada-stat-value" id="avgWords">0</div>
+                </div>
+            </div>
+        </aside>
+
+        <main class="ada-main-panel">
+            <div class="ada-textarea-wrap">
+                <div class="ada-textarea-label">Paste teks untuk dianalisis</div>
+                <textarea class="ada-textarea" id="textInput" placeholder="Masukkan minimal 50 karakter..."></textarea>
+                <div class="ada-footer-row">
+                    <span class="ada-char" id="charWarning"></span>
+                    <button class="ada-btn" id="analyzeBtn" disabled>
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="white">
+                            <path d="M15.5 14h-.79l-.28-.27A6.471 6.471 0 0 0 16 9.5 6.5 6.5 0 1 0 9.5 16c1.61 0 3.09-.59 4.23-1.57l.27.28v.79l5 4.99L20.49 19l-4.99-5zm-6 0C7.01 14 5 11.99 5 9.5S7.01 5 9.5 5 14 7.01 14 9.5 11.99 14 9.5 14z" />
+                        </svg>
+                        Analisis
+                    </button>
+                </div>
+            </div>
+
+            <div class="ada-spinner-wrap" id="spinnerWrap">
+                <div class="ada-spinner"></div>
+                <span class="ada-scanning-text" id="scanningText">Menganalisis pola teks...</span>
+            </div>
+
+            <div class="ada-result-panel" id="resultPanel">
+                <div class="ada-result-header">
+                    <div class="ada-result-title">Hasil analisis</div>
+                    <div id="resultTimestamp" style="font-size:11px; color: var(--color-text-tertiary);"></div>
+                </div>
+
+                <div class="ada-bars">
+                    <div class="ada-bar-row">
+                        <div class="ada-bar-label">AI</div>
+                        <div class="ada-bar-track">
+                            <div class="ada-bar-fill" id="barAI" style="background: var(--coral);"></div>
+                        </div>
+                        <div class="ada-bar-pct" id="pctAI">0%</div>
+                    </div>
+                    <div class="ada-bar-row">
+                        <div class="ada-bar-label">Human</div>
+                        <div class="ada-bar-track">
+                            <div class="ada-bar-fill" id="barHuman" style="background: var(--teal);"></div>
+                        </div>
+                        <div class="ada-bar-pct" id="pctHuman">0%</div>
+                    </div>
+                </div>
+
+                <div class="ada-divider"></div>
+
+                <div style="font-size: 12px; color: var(--color-text-secondary); margin: 0.75rem 0 0.5rem; font-weight: 500;">
+                    Indikator analisis</div>
+                <div class="ada-reasons" id="reasonsList"></div>
+            </div>
+        </main>
+    </div>
+</div>
+
+<script>
+    (function() {
+        // ---- DOM elements ----
+        const textarea = document.getElementById('textInput');
+        const analyzeBtn = document.getElementById('analyzeBtn');
+        const spinnerWrap = document.getElementById('spinnerWrap');
+        const resultPanel = document.getElementById('resultPanel');
+        const scanningText = document.getElementById('scanningText');
+        const reasonsListEl = document.getElementById('reasonsList');
+        const barAI = document.getElementById('barAI');
+        const barHuman = document.getElementById('barHuman');
+        const pctAI = document.getElementById('pctAI');
+        const pctHuman = document.getElementById('pctHuman');
+        const gaugeFill = document.getElementById('gaugeFill');
+        const gaugeNeedle = document.getElementById('gaugeNeedle');
+        const gaugeLabel = document.getElementById('gaugeLabel');
+        const verdictBadge = document.getElementById('verdictBadge');
+
+        // rotating loading messages (same as original)
+        const scanMsgs = [
+            "Menganalisis pola teks...",
+            "Mendeteksi gaya penulisan...",
+            "Menghitung kompleksitas kalimat...",
+            "Memfinalisasi prediksi..."
+        ];
+        let msgInterval = null;
+
+        // Helper: update left panel stats (words, chars, sentences, avg)
+        function updateSidebarStats(text) {
+            const words = text.trim() ? text.trim().split(/\s+/) : [];
+            const sentencesRaw = text.trim() ? text.split(/[.!?]+/).filter(s => s.trim().length > 2) : [];
+            const sentences = sentencesRaw;
+            const wordCountVal = words.length;
+            const charCountVal = text.length;
+            const sentCountVal = sentences.length;
+            const avgWordsVal = sentCountVal > 0 ? Math.round(wordCountVal / sentCountVal) : 0;
+
+            document.getElementById('wordCount').textContent = wordCountVal;
+            document.getElementById('charCountSide').textContent = charCountVal;
+            document.getElementById('sentCount').textContent = sentCountVal;
+            document.getElementById('avgWords').textContent = avgWordsVal;
+
+            const charWarning = document.getElementById('charWarning');
+            if (text.length < 50 && text.length > 0) {
+                charWarning.textContent = `${50 - text.length} karakter lagi`;
+                charWarning.style.color = 'var(--color-text-danger, #D85A30)';
+            } else {
+                charWarning.textContent = text.length > 0 ? `${text.length} karakter` : '';
+                charWarning.style.color = 'var(--color-text-tertiary)';
+            }
+            // enable/disable analyze button
+            analyzeBtn.disabled = (text.trim().length < 50);
+        }
+
+        // Gauge and verdict display logic (matches original, but reusable)
+        function setGaugeAndVerdict(aiPercentage, isAiGeneratedFlag, confidenceScore) {
+            // aiPercentage: 0-100 representing AI likelihood
+            const arcTotal = 188.5; // 60px radius circumference half approx
+            let percentClamped = Math.min(100, Math.max(0, aiPercentage));
+            const offset = arcTotal - (arcTotal * percentClamped / 100);
+            if (gaugeFill) gaugeFill.style.strokeDashoffset = offset;
+            const angle = -90 + (180 * percentClamped / 100);
+            if (gaugeNeedle) gaugeNeedle.style.transform = `rotate(${angle}deg)`;
+            if (gaugeLabel) gaugeLabel.textContent = Math.round(percentClamped) + '%';
+
+            // update badge
+            if (verdictBadge) {
+                const isAI = isAiGeneratedFlag;
+                verdictBadge.className = 'ada-verdict-badge ' + (isAI ? 'ada-badge-ai' : 'ada-badge-human');
+                const dotColor = isAI ? 'var(--coral)' : 'var(--teal)';
+                const verdictText = isAI ? 'Kemungkinan AI' : 'Kemungkinan Manusia';
+                verdictBadge.innerHTML = `<span class="ada-dot" style="background:${dotColor};"></span><span>${verdictText}</span>`;
+            }
+        }
+
+        // show results with data from backend
+        function renderResultsFromBackend(data) {
+            // data structure expected: 
+            // { isAIGenerated: boolean, confidence: number (0-100 as string or number), reasons: string[], error?: false }
+            let isAi = data.isAIGenerated === true;
+            let conf = parseFloat(data.confidence);
+            if (isNaN(conf)) conf = 50;
+            // confidence from backend is the confidence of the verdict (AI confidence)
+            // For gauge and bar: AI percentage = if isAi then conf else (100 - conf)
+            let aiPercentage = isAi ? conf : (100 - conf);
+            aiPercentage = Math.min(100, Math.max(0, aiPercentage));
+            const humanPercentage = 100 - aiPercentage;
+
+            // update bars
+            setTimeout(() => {
+                if (barAI) barAI.style.width = aiPercentage + '%';
+                if (barHuman) barHuman.style.width = humanPercentage + '%';
+                if (pctAI) pctAI.textContent = Math.round(aiPercentage) + '%';
+                if (pctHuman) pctHuman.textContent = Math.round(humanPercentage) + '%';
+            }, 50);
+
+            setGaugeAndVerdict(aiPercentage, isAi, conf);
+
+            // render reasons (indikator analisis)
+            if (reasonsListEl && data.reasons && Array.isArray(data.reasons)) {
+                reasonsListEl.innerHTML = '';
+                data.reasons.forEach((reason, idx) => {
+                    const div = document.createElement('div');
+                    div.className = 'ada-reason-item';
+                    div.style.animationDelay = (idx * 0.08) + 's';
+                    const iconSpan = document.createElement('div');
+                    iconSpan.className = 'ada-reason-icon';
+                    const isAiFlag = isAi;
+                    iconSpan.style.background = isAiFlag ? 'var(--coral-light)' : 'var(--teal-light)';
+                    iconSpan.style.color = isAiFlag ? 'var(--coral)' : 'var(--teal)';
+                    iconSpan.textContent = (idx + 1).toString();
+                    const textSpan = document.createElement('span');
+                    textSpan.textContent = reason;
+                    div.appendChild(iconSpan);
+                    div.appendChild(textSpan);
+                    reasonsListEl.appendChild(div);
+                });
+            } else if (reasonsListEl && (!data.reasons || data.reasons.length === 0)) {
+                reasonsListEl.innerHTML = '<div class="ada-reason-item">Tidak ada indikator spesifik.</div>';
+            }
+
+            // timestamp
+            const tsEl = document.getElementById('resultTimestamp');
+            if (tsEl) {
+                tsEl.textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+            }
+            resultPanel.classList.add('visible');
+        }
+
+        function showErrorInResultPanel(errorMessage) {
+            // show error in result panel gracefully
+            resultPanel.classList.add('visible');
+            // reset bars to zero?
+            if (barAI) barAI.style.width = '0%';
+            if (barHuman) barHuman.style.width = '0%';
+            if (pctAI) pctAI.textContent = '0%';
+            if (pctHuman) pctHuman.textContent = '0%';
+            setGaugeAndVerdict(0, false, 0);
+            if (verdictBadge) {
+                verdictBadge.className = 'ada-verdict-badge ada-badge-neutral';
+                verdictBadge.innerHTML = `<span class="ada-dot" style="background:var(--color-text-secondary);"></span><span>Error analisis</span>`;
+            }
+            if (reasonsListEl) {
+                reasonsListEl.innerHTML = `<div class="ada-error-message">⚠️ ${errorMessage}</div>`;
+            }
+            const tsEl = document.getElementById('resultTimestamp');
+            if (tsEl) tsEl.textContent = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' });
+        }
+
+        // stop rotating messages
+        function stopRotatingMessages() {
+            if (msgInterval) {
+                clearInterval(msgInterval);
+                msgInterval = null;
+            }
+        }
+
+        // start rotating messages during loading
+        function startRotatingMessages() {
+            if (msgInterval) stopRotatingMessages();
+            let idx = 0;
+            scanningText.textContent = scanMsgs[0];
+            msgInterval = setInterval(() => {
+                idx = (idx + 1) % scanMsgs.length;
+                if (scanningText) scanningText.textContent = scanMsgs[idx];
+            }, 900);
+        }
+
+        // ----- main analyze function: call backend /detect endpoint (express server) -----
+        async function analyzeText() {
+            const rawText = textarea.value.trim();
+            if (rawText.length < 50) {
+                // button should be disabled anyway, but double-check
+                return;
+            }
+
+            // disable button and start loading
+            analyzeBtn.disabled = true;
+            // hide any previous result, show spinner
+            resultPanel.classList.remove('visible');
+            spinnerWrap.classList.add('visible');
+            startRotatingMessages();
+
+            try {
+                // Call local server endpoint /detect with POST JSON
+                const response = await fetch('/detect', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ text: rawText })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`Server error: ${response.status} ${response.statusText}`);
+                }
+
+                const result = await response.json();
+
+                // stop spinners and rotating messages
+                stopRotatingMessages();
+                spinnerWrap.classList.remove('visible');
+
+                // Check error flag from backend
+                if (result.error === true) {
+                    // show error message in result panel
+                    showErrorInResultPanel(result.message || 'Gagal memproses teks.');
+                    return;
+                }
+
+                // validate required fields
+                if (result.isAIGenerated === undefined || result.confidence === undefined) {
+                    throw new Error('Respons dari server tidak lengkap');
+                }
+
+                // ensure confidence is a number between 0-100 (backend returns string with decimal maybe)
+                let confidenceNum = parseFloat(result.confidence);
+                if (isNaN(confidenceNum)) confidenceNum = 50;
+                // normalize
+                confidenceNum = Math.min(100, Math.max(0, confidenceNum));
+                const reasonsArray = Array.isArray(result.reasons) ? result.reasons : 
+                                    (result.reasons ? [result.reasons] : ["Pola linguistik terdeteksi"]);
+
+                // Build final data object for render
+                const outputData = {
+                    isAIGenerated: result.isAIGenerated === true,
+                    confidence: confidenceNum,
+                    reasons: reasonsArray.slice(0, 5)   // max 5 reasons
+                };
+                renderResultsFromBackend(outputData);
+            } catch (err) {
+                console.error('Analisis error:', err);
+                stopRotatingMessages();
+                spinnerWrap.classList.remove('visible');
+                let friendlyMsg = 'Tidak dapat terhubung ke server. Pastikan server berjalan (node server.js) di port 3000.';
+                if (err.message.includes('Failed to fetch') || err.message.includes('NetworkError')) {
+                    friendlyMsg = 'Gagal terhubung ke backend. Jalankan "node server.js" dan akses melalui http://localhost:3000';
+                } else {
+                    friendlyMsg = `Error: ${err.message}`;
+                }
+                showErrorInResultPanel(friendlyMsg);
+            } finally {
+                // re-evaluate button state based on current text length
+                const currentText = textarea.value.trim();
+                analyzeBtn.disabled = (currentText.length < 50);
+            }
+        }
+
+        // ----- Event listeners -----
+        textarea.addEventListener('input', function() {
+            updateSidebarStats(textarea.value);
+        });
+
+        analyzeBtn.addEventListener('click', analyzeText);
+
+        // Initial update sidebar on load (empty text)
+        updateSidebarStats('');
+        // additional: if any prefilled text (none)
+    })();
+</script>
+</body>
+</html>
